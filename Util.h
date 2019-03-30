@@ -16,7 +16,7 @@ typedef void (^APIStringResponse)   (NSString *response, NSError *error);
 
 + (BOOL)validateAlphabets: (NSString *)alpha;
 
-+ (BOOL)validateEmail:(NSString *)checkString;
++ (BOOL)isValidEmail:(NSString *)checkString;
 
 + (BOOL)isStringNull:(NSString *)srcString;
 
@@ -50,5 +50,11 @@ typedef void (^APIStringResponse)   (NSString *response, NSError *error);
 
 + (void)getVideoFromUrl:(NSURL *)url withCompltion:(void (^)(NSData *data))block;
 + (NSString *) applicationDocumentsDirectory;
+
+@end
+
+
+@interface NSArray (UtilArray)
+-(BOOL)isValidIndex:(NSInteger)index;
 
 @end

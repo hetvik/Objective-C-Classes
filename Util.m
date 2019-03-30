@@ -20,6 +20,15 @@
     return sharedInstance;
 }
 
++ (BOOL)isEnglishLanguage{
+    
+    NSString *language = [[NSLocale preferredLanguages] objectAtIndex:0];
+    if ([language containsString:@"en"]){
+        return YES;
+    }
+    return NO;
+}
+
 + (NSString *)urlencode:(NSString *)simpleString
 {
     NSMutableString *output = [NSMutableString string];
@@ -57,15 +66,17 @@
     BOOL isValid = [abnTest evaluateWithObject:alpha];
     return isValid;
 }
-+ (BOOL) validateEmail:(NSString *)checkString
+
++ (BOOL)isValidEmail:(NSString *)checkString
 {
-    BOOL stricterFilter = NO;
+    BOOL stricterFilter = NO; // Discussion http://blog.logichigh.com/2010/09/02/validating-an-e-mail-address/
     NSString *stricterFilterString = @"^[A-Z0-9a-z\\._%+-]+@([A-Za-z0-9-]+\\.)+[A-Za-z]{2,4}$";
     NSString *laxString = @"^.+@([A-Za-z0-9-]+\\.)+[A-Za-z]{2}[A-Za-z]*$";
     NSString *emailRegex = stricterFilter ? stricterFilterString : laxString;
     NSPredicate *emailTest = [NSPredicate predicateWithFormat:@"SELF MATCHES %@", emailRegex];
     return [emailTest evaluateWithObject:checkString];
 }
+
 + (BOOL) isStringNull:(NSString *)srcString
 {
     if (srcString != nil && srcString != (id)[NSNull null] && ![srcString isKindOfClass:[NSNull class]] && ![srcString isEqualToString:@"<null>"] && ![srcString isEqualToString:@"(null)"] && srcString.length > 0)
@@ -73,10 +84,196 @@
     
     return YES;
 }
+
++ (NSMutableArray *)filterNullObjects:(NSArray *)array {
+    NSPredicate *predicate = [NSPredicate predicateWithFormat:@"SELF != %@", [NSNull null]];
+    NSArray *fileterd = [array filteredArrayUsingPredicate:predicate];
+    NSMutableArray *mArray = [NSMutableArray arrayWithArray:fileterd];
+    return mArray;
+}
+
++ (NSMutableDictionary *)filterNullObjectsInDict:(NSDictionary *)dict {
+    NSMutableDictionary *dictNew = [dict mutableCopy];
+    for (NSString *key in dictNew) {
+        id object = [dictNew objectForKey:key];
+        if ([Util isNullValue:[NSString stringWithFormat:@"%@",object]]) {
+            [dictNew removeObjectForKey:key];
+        } else if ([object isKindOfClass:[NSDictionary class]]) {
+            [dictNew setObject: [self filterNullObjectsInDict:object] forKey: key];
+        }
+    }
+    return  dictNew;
+}
+
++ (NSArray *)stringToArray:(NSString *)response {
+    if ([Util isNullValue:response]) {
+        response = @"";
+    }
+    NSData *data = [response dataUsingEncoding:NSUTF8StringEncoding];
+    NSArray *array = [NSJSONSerialization JSONObjectWithData:data options:0 error:nil];
+    return array;
+}
+
++ (NSString *)dictToString:(NSDictionary *)response {
+    NSError * err;
+    NSData * jsonData = [NSJSONSerialization dataWithJSONObject:response options:0 error:&err];
+    NSString * myString = [[NSString alloc] initWithData:jsonData encoding:NSUTF8StringEncoding];
+    return myString;
+}
+
++ (NSString *)arrayToString:(NSMutableArray *)response {
+    NSError * err;
+    NSData * jsonData = [NSJSONSerialization dataWithJSONObject:response options:0 error:&err];
+    NSString * myString = [[NSString alloc] initWithData:jsonData encoding:NSUTF8StringEncoding];
+    return myString;
+}
+
++ (NSString *)generateImageName{
+    
+    NSDate *currDate = [NSDate date];
+    NSDateFormatter *dateFormatter = [[NSDateFormatter alloc]init];
+    [dateFormatter setDateFormat:@"ddMMMYYYYHHmmss"];
+    NSString *dateString = [dateFormatter stringFromDate:currDate];
+    NSLog(@"%@",dateString);
+    return dateString;
+}
+
++ (UIImage *)captureView:(UIView *)view {
+    
+    CGRect screenRect = [[UIScreen mainScreen] bounds];
+    UIGraphicsBeginImageContext(screenRect.size);
+    
+    CGContextRef ctx = UIGraphicsGetCurrentContext();
+    [[UIColor blackColor] set];
+    CGContextFillRect(ctx, screenRect);
+    
+    [view.layer renderInContext:ctx];
+    UIImage *newImage = UIGraphicsGetImageFromCurrentImageContext();
+    UIGraphicsEndImageContext();
+    return newImage;
+}
+
++(NSString *)getTodaysDayName {
+    
+    NSDate *now = [NSDate date];
+    NSDateFormatter *dateFormatter = [[NSDateFormatter alloc] init];
+    [dateFormatter setDateFormat:@"EEEE"];
+    NSString *dayName = [dateFormatter stringFromDate:now];
+    return dayName;
+}
+
++(NSString *)getShortTodaysDayName {
+    
+    NSDate *now = [NSDate date];
+    NSDateFormatter *dateFormatter = [[NSDateFormatter alloc] init];
+    [dateFormatter setDateFormat:@"EEE"];
+    
+    NSLocale *usLocale = [[NSLocale alloc] initWithLocaleIdentifier:@"en_US"];
+    [dateFormatter setLocale:usLocale];
+    
+    NSString *dayName = [dateFormatter stringFromDate:now];
+    return dayName;
+}
+
++ (BOOL)isPushNotificationEnabled{
+    //BOOL isEnabled = [[UIApplication sharedApplication] isRegisteredForRemoteNotifications];
+    if ([[UIApplication sharedApplication] respondsToSelector:@selector(currentUserNotificationSettings)]) {
+        
+        UIUserNotificationType isEnabled = [[[UIApplication sharedApplication] currentUserNotificationSettings] types];
+        
+        if (isEnabled == UIUserNotificationTypeNone)
+        {
+            return isEnabled;
+        }
+        return isEnabled;
+    }
+    else
+        
+    {
+        
+        UIRemoteNotificationType isEnabled = [[UIApplication sharedApplication] enabledRemoteNotificationTypes];
+        
+        if (isEnabled == UIRemoteNotificationTypeNone) {
+            return isEnabled;
+        }
+        return isEnabled;
+    }
+    
+}
+
++ (NSDictionary *)stringToDict:(NSString *)response {
+    
+    if ([Util isNullValue:response]) {
+        response = @"";
+    }
+    
+    NSData *data = [response dataUsingEncoding:NSUTF8StringEncoding];
+    NSDictionary *dictionary = [NSJSONSerialization JSONObjectWithData:data options:0 error:nil];
+    return dictionary;
+}
+
++ (NSString *)getCurrentTimeStamp {
+    
+    NSInteger cHours    =[[NSDate date] hour];
+    NSInteger cMinutes  =[[NSDate date] minute];
+    NSInteger cSeconds  =[[NSDate date] seconds];
+    
+    NSString *currentTimeText = [NSString stringWithFormat:@"%lu:%02lu:%02lu",(unsigned long)cHours, (unsigned long)cMinutes, (unsigned long)cSeconds];
+    
+    return currentTimeText;
+}
+
 + (void)hideKeyboard
 {
     [[[UIApplication sharedApplication] keyWindow] endEditing:YES];
 }
+
++ (CGSize )getSizeOfText:(NSString *)text withMaxWidth:(CGFloat)maxWidth withFont:(UIFont *)font{
+    
+    CGRect stringRect = [text boundingRectWithSize:CGSizeMake(maxWidth, CGFLOAT_MAX)
+                                           options:(NSStringDrawingUsesLineFragmentOrigin | NSStringDrawingUsesFontLeading)
+                                        attributes:@{ NSFontAttributeName : font }
+                                           context:nil];
+    
+    CGSize stringSize = CGRectIntegral(stringRect).size;
+    return stringSize;
+}
+
++ (BOOL) isUserContactNumberHaveValidLength: (NSString *) userContactNo{
+    
+    if ([userContactNo length] >= 10 && [userContactNo length] <= 20){
+        return YES;
+    }
+    return NO;
+}
+
++ (NSString *)convet12HourFormat:(NSString *)value {
+    NSString *result = @"";
+    
+    NSDateFormatter *formatter = [[NSDateFormatter alloc] init];
+    [formatter setDateFormat:@"HH:mm"];
+    
+    NSDate *date   = [formatter dateFromString:value];
+    formatter.dateFormat = @"hh:mm a";
+    result = [formatter stringFromDate:date];
+    
+    return result;
+}
+
++ (NSString *)convet24HourFormat:(NSString *)value {
+    
+    NSString *result = @"";
+    
+    NSDateFormatter *formatter = [[NSDateFormatter alloc] init];
+    [formatter setDateFormat:@"hh:mm a"];
+    
+    NSDate *date = [formatter dateFromString:value];
+    formatter.dateFormat = @"HH:mm";
+    result = [formatter stringFromDate:date];
+    
+    return result;
+}
+
 + (void)textfieldPlashholderChange:(NSString*)fontFamily forView:(UIView*)view andSubViews:(BOOL)isSubViews FontSize:(CGFloat)size
 {
     if ([view isKindOfClass:[UITextField class]])
@@ -442,5 +639,15 @@
     NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
     NSString *basePath = paths.firstObject;
     return basePath;
+}
+@end
+
+@implementation NSArray (UtilArray)
+
+-(BOOL)isValidIndex:(NSInteger)index{
+    if (index<[self count]) {
+        return YES;
+    }
+    return NO;
 }
 @end
