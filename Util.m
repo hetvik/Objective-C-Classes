@@ -6,7 +6,6 @@
 #import "Util.h"
 #import "AppDelegate.h"
 #include <CommonCrypto/CommonDigest.h>
-#import <Photos/Photos.h>
 
 @implementation Util
 
@@ -96,7 +95,7 @@
     NSMutableDictionary *dictNew = [dict mutableCopy];
     for (NSString *key in dictNew) {
         id object = [dictNew objectForKey:key];
-        if ([Util isNullValue:[NSString stringWithFormat:@"%@",object]]) {
+        if ([Util isStringNull:[NSString stringWithFormat:@"%@",object]]) {
             [dictNew removeObjectForKey:key];
         } else if ([object isKindOfClass:[NSDictionary class]]) {
             [dictNew setObject: [self filterNullObjectsInDict:object] forKey: key];
@@ -105,14 +104,6 @@
     return  dictNew;
 }
 
-+ (NSArray *)stringToArray:(NSString *)response {
-    if ([Util isNullValue:response]) {
-        response = @"";
-    }
-    NSData *data = [response dataUsingEncoding:NSUTF8StringEncoding];
-    NSArray *array = [NSJSONSerialization JSONObjectWithData:data options:0 error:nil];
-    return array;
-}
 
 + (NSString *)dictToString:(NSDictionary *)response {
     NSError * err;
@@ -203,24 +194,13 @@
 
 + (NSDictionary *)stringToDict:(NSString *)response {
     
-    if ([Util isNullValue:response]) {
+    if ([Util isStringNull:response]) {
         response = @"";
     }
     
     NSData *data = [response dataUsingEncoding:NSUTF8StringEncoding];
     NSDictionary *dictionary = [NSJSONSerialization JSONObjectWithData:data options:0 error:nil];
     return dictionary;
-}
-
-+ (NSString *)getCurrentTimeStamp {
-    
-    NSInteger cHours    =[[NSDate date] hour];
-    NSInteger cMinutes  =[[NSDate date] minute];
-    NSInteger cSeconds  =[[NSDate date] seconds];
-    
-    NSString *currentTimeText = [NSString stringWithFormat:@"%lu:%02lu:%02lu",(unsigned long)cHours, (unsigned long)cMinutes, (unsigned long)cSeconds];
-    
-    return currentTimeText;
 }
 
 + (void)hideKeyboard
@@ -274,8 +254,7 @@
     return result;
 }
 
-+ (void)textfieldPlashholderChange:(NSString*)fontFamily forView:(UIView*)view andSubViews:(BOOL)isSubViews FontSize:(CGFloat)size
-{
++ (void)textfieldPlashholderChange:(NSString*)fontFamily forView:(UIView*)view andSubViews:(BOOL)isSubViews withFontSize:(CGFloat)fSize {
     if ([view isKindOfClass:[UITextField class]])
     {
         UITextField *txt = (UITextField *)view;
@@ -284,7 +263,7 @@
         [[NSAttributedString alloc] initWithString:txt.placeholder
                                         attributes:@{
                                                      NSForegroundColorAttributeName: color,
-                                                     NSFontAttributeName : [UIFont fontWithName:fontFamily size:size]
+                                                     NSFontAttributeName : [UIFont fontWithName:fontFamily size:fSize]
                                                      }
          ];
     }
@@ -293,7 +272,7 @@
     {
         for (UIView *sview in view.subviews)
         {
-            [self textfieldPlashholderChange:fontFamily forView:sview andSubViews:YES FontSize:size];
+            [Util textfieldPlashholderChange:fontFamily forView:sview andSubViews:YES withFontSize:fSize];
         }
     }
 }
@@ -315,8 +294,7 @@
     UIImage *imgThumb;//=[[UIImage alloc] initWithCGImage:imgRef];
     return imgThumb;
 }
-+ (CGSize)getLabelSize:(UILabel *)currentLabel
-{
++ (CGSize)getLabelSize:(UILabel *)currentLabel {
     CGSize finalSize;
     if (currentLabel.text.length==0) {
         finalSize=CGSizeMake(0, 0);
@@ -332,16 +310,6 @@
     return finalSize;
 }
 
-+(NSMutableDictionary *)makeURLDictionary:(NSMutableDictionary *)dictionary
-{
-    NSString *loggedinuser_token = kCommon.strUserID;
-    [dictionary setObject:@"" forKey:@"user_id"];
-    if(loggedinuser_token != nil && loggedinuser_token.length > 0)
-    {
-        [dictionary setObject:loggedinuser_token forKey:@"user_id"];
-    }
-    return dictionary;
-}
 +(NSString *)formatDate:(NSString *)subjectDate source:(NSString *)sourceFormat result:(NSString *) resultFormat {
     
     NSString *strDateTime = @"";
@@ -380,19 +348,9 @@
     return array;
 }
 
-+ (NSDictionary *)stringToDict:(NSString *)response {
-    
-    NSData *data = [response dataUsingEncoding:NSUTF8StringEncoding];
-    NSDictionary *dictionary = [NSJSONSerialization JSONObjectWithData:data options:0 error:nil];
-    return dictionary;
-}
-
 #pragma mark - USER MODEL
 
 + (void)resetDefaults {
-    
-    kCommon.strUserID=@"";
-    kCommon.isLogin=NO;
     
     NSUserDefaults * defs = [NSUserDefaults standardUserDefaults];
     NSDictionary * dict = [defs dictionaryRepresentation];
@@ -402,172 +360,6 @@
     }
     [[NSUserDefaults standardUserDefaults] setObject:UIImagePNGRepresentation([UIImage imageNamed:@"no_avatar"])forKey:@"user_pic"];
     [defs synchronize];
-}
-
-+ (void)getThumbFromVideo:(NSString *)url withCompletionBlock:(void(^)(UIImage *imgThumb))block {
-    
-    AVURLAsset *asset=[[AVURLAsset alloc] initWithURL:[NSURL URLWithString:url] options:nil];
-    AVAssetImageGenerator *generator = [[AVAssetImageGenerator alloc] initWithAsset:asset];
-    generator.appliesPreferredTrackTransform=TRUE;
-    CMTime thumbTime = CMTimeMakeWithSeconds(0,30);
-    
-    AVAssetImageGeneratorCompletionHandler handler = ^(CMTime requestedTime, CGImageRef im, CMTime actualTime, AVAssetImageGeneratorResult result, NSError *error){
-        if (result != AVAssetImageGeneratorSucceeded) {
-            NSLog(@"couldn't generate thumbnail, error:%@", error);
-        }
-        UIImage *thumb = [UIImage imageWithCGImage:im];
-        
-        dispatch_async(dispatch_get_main_queue(), ^{
-            block(thumb);
-        });
-    };
-    
-    /*CGSize maxSize = CGSizeMake(320, 180);
-     generator.maximumSize = maxSize;*/
-    [generator generateCGImagesAsynchronouslyForTimes:[NSArray arrayWithObject:[NSValue valueWithCMTime:thumbTime]] completionHandler:handler];
-}
-
-+ (void)getVideoFromUrl:(NSURL *)url withCompltion:(void (^)(NSData *))block {
-
-    if ([url isFileURL]) {
-        [self exportVideo:url withCompltion:block];
-    } else {
-        ALAssetsLibrary *library=[[ALAssetsLibrary alloc] init];
-        
-        [library assetForURL:url
-                 resultBlock:^(ALAsset *asset)
-         {
-             if (asset){
-                 ALAssetRepresentation *representation = [asset defaultRepresentation];
-                 [self exportVideo:representation.url withCompltion:block];
-                 
-                 //////////////////////////////////////////////////////
-                 // SUCCESS POINT #1 - asset is what we are looking for
-                 //////////////////////////////////////////////////////
-             }
-             else {
-                 // On iOS 8.1 [library assetForUrl] Photo Streams always returns nil. Try to obtain it in an alternative way
-                 
-                 [library enumerateGroupsWithTypes:ALAssetsGroupAll
-                                        usingBlock:^(ALAssetsGroup *group, BOOL *stop)
-                  {
-                      [group enumerateAssetsWithOptions:NSEnumerationReverse usingBlock:^(ALAsset *result, NSUInteger index, BOOL *stop) {
-                          if([result.defaultRepresentation.url isEqual:url])
-                          {
-                              [self exportVideo:result.defaultRepresentation.url withCompltion:block];
-                              ///////////////////////////////////////////////////////
-                              // SUCCESS POINT #2 - result is what we are looking for
-                              ///////////////////////////////////////////////////////
-                          }
-                      }];
-                  }
-                  
-                                      failureBlock:^(NSError *error)
-                  {
-                      NSLog(@"Error: Cannot load asset from photo stream - %@", [error localizedDescription]);
-                      block(nil);
-                      
-                  }];
-             }
-             
-         }
-                failureBlock:^(NSError *error)
-         {
-             NSLog(@"Error: Cannot load asset - %@", [error localizedDescription]);
-             block(nil);
-         }
-         ];
-    }
-   
-    
-   
-}
-+ (void)exportVideo:(NSURL *)url withCompltion:(void (^)(NSData *))block {
-    NSString *extension = @"mp4";
-    
-    NSString *filePath = [[Util applicationDocumentsDirectory] stringByAppendingPathComponent:[NSString stringWithFormat:@"ExportedVideo.%@",extension]];
-    
-    [[NSFileManager defaultManager] removeItemAtPath:filePath error:nil];
-    
-    // asset is a video
-    AVURLAsset *avAsset = [[AVURLAsset alloc] initWithURL:url options:nil];
-    NSString *compressFormat = AVAssetExportPreset640x480;
-    
-    
-    NSArray *compatiblePresets = [AVAssetExportSession exportPresetsCompatibleWithAsset:avAsset];
-    if ([compatiblePresets containsObject:compressFormat]) {
-        AVAssetExportSession *exportSession = [[AVAssetExportSession alloc]
-                                               initWithAsset:avAsset presetName:compressFormat];
-        // Implementation continues.
-        
-        
-        exportSession.outputURL = [NSURL fileURLWithPath:filePath];
-        //exportSession.outputFileType = [representation UTI];
-        exportSession.outputFileType = @"public.mpeg-4";
-        
-        
-        [exportSession exportAsynchronouslyWithCompletionHandler:^{
-            
-            switch ([exportSession status]) {
-                case AVAssetExportSessionStatusFailed: {
-                    
-                    NSLog(@"Export failed: %@", [[exportSession error] localizedDescription]);
-                    dispatch_async(dispatch_get_main_queue(), ^{
-                        block(nil);
-                    });
-                    
-                    break;
-                    
-                    
-                }
-                case AVAssetExportSessionStatusCancelled: {
-                    NSLog(@"Export canceled");
-                    dispatch_async(dispatch_get_main_queue(), ^{
-                        block(nil);
-                    });
-
-                    
-                    break;
-                    
-                }
-                case AVAssetExportSessionStatusCompleted: {
-                    NSLog(@"Export completed");
-                    NSData *exportedData = [NSData dataWithContentsOfFile:filePath];
-                    dispatch_async(dispatch_get_main_queue(), ^{
-                        block(exportedData);
-                    });
-                    break;
-                }
-                default:
-                    break;
-            }
-        }];
-    }
-}
-/*
-+ (void)getVideoFromUrl:(NSURL *)url withCompltion:(void (^)(NSData *))block {
-    ALAssetsLibrary *assetLibrary=[[ALAssetsLibrary alloc] init];
-
-    [assetLibrary assetForURL:url resultBlock:^(ALAsset *asset)
-     {
-         ALAssetRepresentation *representation = [asset defaultRepresentation];
-         //NSString *extension = [representation.url pathExtension];
-         
-         if ([[asset valueForProperty:ALAssetPropertyType] isEqualToString:ALAssetTypeVideo]) {
- 
-         }
-     }failureBlock:^(NSError *error) {
-         block(nil);
-     }];
-}*/
-
-+ (MarqueeLabel *) setMarqueeProperty:(MarqueeLabel *)lable{
-    
-    lable.marqueeType = MLContinuous;
-    lable.scrollDuration = scrollingDuration;
-    lable.fadeLength = textFadingLength;
-    lable.trailingBuffer = textTrailingBufferLength;
-    return lable;
 }
 
 + (NSString *)getRemainingTime:(NSString *)dateCreated{
